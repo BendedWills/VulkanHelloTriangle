@@ -12,5 +12,6 @@ target_include_directories(${PROJECT_NAME}
     PUBLIC "Headers"
 )
 
-# target_link_directories(${PROJECT_NAME}
-# )
+target_link_libraries(${PROJECT_NAME}
+    glfw vulkan dl pthread X11 Xrandr Xi
+)

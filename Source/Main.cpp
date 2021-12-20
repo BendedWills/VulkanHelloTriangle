@@ -1,7 +1,17 @@
-#include <iostream>
+#include <VulkanHelloTriangle/Application.hpp>
 
 int main()
 {
-    std::cout << "Hello, world!" << std::endl;
+    if (!glfwInit())
+    {
+        std::cout << "Failed to initialize GLFW!" << std::endl;
+        return 1;
+    }
+
+    Application app;
+    app.Start();
+
+    glfwTerminate();
+
     return 0;
 }
