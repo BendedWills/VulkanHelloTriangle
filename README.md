@@ -24,6 +24,7 @@ Arch:
 * nvidia-utils for nvidia GPUs, vulkan-intel for intel GPUs and vulkan-radeon for AMD GPUs
 * vulkan-headers
 * vulkan-tools (optional)
+* vulkan-validation-layers
 
 # Linux build instructions
 If you are on linux and want to build this project, you've come to the right place.
