@@ -5,8 +5,11 @@
 #pragma once
 
 #include <VulkanHelloTriangle/Common/IDisposable.hpp>
+#include <VulkanHelloTriangle/Common/Ref.hpp>
 #include <VulkanHelloTriangle/Graphics/Vulkan/Surface.hpp>
 #include <VulkanHelloTriangle/Graphics/Vulkan/Device.hpp>
+#include <VulkanHelloTriangle/Graphics/Vulkan/Image.hpp>
+#include <VulkanHelloTriangle/Graphics/Vulkan/ImageView.hpp>
 #include <VulkanHelloTriangle/Graphics/Vulkan/Common/SwapchainDescriptor.hpp>
 
 #include <vulkan/vulkan.hpp>
@@ -50,7 +53,8 @@ namespace Vulkan
         VkSurfaceFormatKHR ChooseSurfaceFormat(SwapchainDetails details);
 
         uint32_t GetImageCount();
-        std::vector<VkImage> GetImages();
+        std::vector<Ref<Image>> GetImages();
+        std::vector<Ref<ImageView>> GetImageViews();
 
         VkExtent2D GetExtent();
         VkFormat GetImageFormat();

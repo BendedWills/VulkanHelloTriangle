@@ -1,4 +1,5 @@
 #include <VulkanHelloTriangle/Graphics/Vulkan/Swapchain.hpp>
+
 #include <cmath>
 
 using namespace Vulkan;
@@ -117,7 +118,7 @@ uint32_t Swapchain::GetImageCount()
 	return imageCount;
 }
 
-std::vector<VkImage> Swapchain::GetImages()
+std::vector<Ref<Image>> Swapchain::GetImages()
 {
 	uint32_t numImages;
 	vkGetSwapchainImagesKHR(*pDevice->GetDevice(), swapchain, &numImages,
@@ -126,8 +127,38 @@ std::vector<VkImage> Swapchain::GetImages()
 	std::vector<VkImage> swapchainImages(numImages);
 	vkGetSwapchainImagesKHR(*pDevice->GetDevice(), swapchain, &numImages,
 		swapchainImages.data());
+
+	std::vector<Ref<Image>> vkHelloImages;
+	for (VkImage image : swapchainImages)
+		vkHelloImages.push_back(RefTools::Create<Image>(&image));
 	
-	return swapchainImages;
+	return vkHelloImages;
+}
+
+std::vector<Ref<ImageView>> Swapchain::GetImageViews()
+{
+	std::vector<Ref<Image>> images = GetImages();
+	
+	std::vector<Ref<ImageView>> imageViews;
+	for (Ref<Image> image : images)
+	{
+		ImageViewDescriptor desc;
+		desc.format = imageFormat;
+		desc.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		desc.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		desc.subresourceRange.baseMipLevel = 0;
+		desc.subresourceRange.levelCount = 1;
+		desc.subresourceRange.baseArrayLayer = 0;
+		desc.subresourceRange.layerCount = 1;
+
+		Ref<ImageView> view = RefTools::Create<ImageView>();
+		if (!view->Init(pDevice, image.get(), &desc))
+			return std::vector<Ref<ImageView>>();
+
+		imageViews.push_back(view);
+	}
+
+	return imageViews;
 }
 
 VkExtent2D Swapchain::GetExtent()

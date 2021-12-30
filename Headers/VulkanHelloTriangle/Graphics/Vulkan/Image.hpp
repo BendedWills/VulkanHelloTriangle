@@ -10,13 +10,13 @@ namespace Vulkan
     {
     public:
         Image() {}
+        Image(VkImage* pImage);
 
         VkImage* GetImage();
     protected:
-        Image(VkImage* pImage);
-
         void OnDispose();
     private:
         VkImage image;
+        bool fromExisting = false;
     };
 }

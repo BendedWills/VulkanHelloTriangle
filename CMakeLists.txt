@@ -6,6 +6,7 @@ file(GLOB_RECURSE SOURCES
     "Source/*.c"
     "Headers/*.hpp"
     "Headers/*.h"
+    "Assets/CompiledAssets/*.h"
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
