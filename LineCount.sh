@@ -1,1 +1,1 @@
-find * \( -path "build" -o -path ".git" \) -prune -o -type f -exec cat {} \; | wc -l
+find * \( -path "Build" -o -path ".git" -o -path "Assets" \) -prune -o -type f -exec cat {} \; | wc -l

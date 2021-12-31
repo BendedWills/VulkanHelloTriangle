@@ -1,5 +1,7 @@
 #include <VulkanHelloTriangle/Application.hpp>
+#include <VulkanHelloTriangle/Common/Resource.hpp>
 #include <set>
+#include <string>
 
 void Application::DebugCallback::OnDebugLog(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -46,6 +48,10 @@ bool Application::InitWindow(uint64_t width, uint64_t height)
         nullptr);
     if (!window)
         return false;
+    
+    Resource solidFragResource = LOAD_RESOURCE(___Assets_solidFrag_glsl);
+    std::cout << std::string((const char*)solidFragResource.GetData(), 
+        solidFragResource.GetSize()) << std::endl;
     
     return true;
 }
