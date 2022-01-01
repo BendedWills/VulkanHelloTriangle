@@ -40,6 +40,7 @@ private:
      *  Otherwise, false.
      */
     bool InitVulkan();
+    bool InitShaders();
 
     void Render();
 
@@ -55,6 +56,10 @@ private:
     Vulkan::Queue graphicsQueue;
     Vulkan::Queue presentQueue;
     Vulkan::Swapchain swapchain;
+
+    // Shader stuff
+    Vulkan::ShaderModule vertexModule;
+    Vulkan::ShaderModule fragmentModule;
 
     DebugCallback callback;
 };

@@ -49,15 +49,13 @@ bool Application::InitWindow(uint64_t width, uint64_t height)
     if (!window)
         return false;
     
-    Resource solidFragResource = LOAD_RESOURCE(___Assets_solidFrag_glsl);
-    std::cout << std::string((const char*)solidFragResource.GetData(), 
-        solidFragResource.GetSize()) << std::endl;
-    
     return true;
 }
 
 bool Application::InitVulkan()
 {
+    glslang::InitializeProcess();
+
     vulkan.AddDebugMessenger(&callback);
     if (!vulkan.Init(nullptr, nullptr, true))
         return false;
@@ -132,6 +130,57 @@ bool Application::InitVulkan()
     if (!swapchain.Init(&surface, &device, width, height, &swapchainDesc))
         return false;
     
+    if (!InitShaders())
+    {
+        std::cout << "Failed to initialize shaders!" << std::endl;
+        glslang::FinalizeProcess();
+        return false;
+    }
+    
+    return true;
+}
+
+bool Application::InitShaders()
+{
+    vertexModule.Init(&device);
+    fragmentModule.Init(&device);
+
+    Resource solidVertResource = LOAD_RESOURCE(Assets_solidVert_glsl);
+    Resource solidFragResource = LOAD_RESOURCE(Assets_solidFrag_glsl);
+
+    std::string solidVertString = std::string(
+        solidVertResource.GetData(),
+        solidVertResource.GetData() + solidVertResource.GetSize()
+    );
+    std::string solidFragString = std::string(
+        solidFragResource.GetData(),
+        solidFragResource.GetData() + solidFragResource.GetSize()
+    );
+
+    std::string vertexInfo;
+    std::string vertexDebug;
+    if (!vertexModule.FromGLSL(solidVertString.c_str(), 
+        Vulkan::ShaderType::VERTEX, &vertexInfo, &vertexDebug))
+    {
+        std::cout << "Vertex info log:\n" << vertexInfo;
+        std::cout << "Vertex debug log:\n" << vertexDebug;
+        std::cout << "Vertex compilation failed!" << std::endl;
+
+        return false;
+    }
+    
+    std::string fragInfo;
+    std::string fragDebug;
+    if (!fragmentModule.FromGLSL(solidFragString.c_str(), 
+        Vulkan::ShaderType::FRAG, &fragInfo, &fragDebug))
+    {
+        std::cout << "Fragment info log:\n" << fragInfo;
+        std::cout << "Fragment debug log:\n" << fragDebug;
+        std::cout << "Fragment compilation failed!" << std::endl;
+
+        return false;
+    }
+    
     return true;
 }
 
@@ -142,9 +191,13 @@ void Application::Render()
 
 void Application::Dispose()
 {
+    vertexModule.Dispose();
+    fragmentModule.Dispose();
     swapchain.Dispose();
     device.Dispose();
     surface.Dispose();
     vulkan.Dispose();
     glfwDestroyWindow(window);
+
+    glslang::FinalizeProcess();
 }

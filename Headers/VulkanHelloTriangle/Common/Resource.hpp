@@ -7,9 +7,10 @@ class Resource
 public:
     Resource(const uint8_t* start, const uint8_t* end)
         :
-        data(start),
-        size(end - start)
-    {}
+        data(start)
+    {
+        size = (uint64_t)(end - start);
+    }
 
     Resource(const Resource& ref)
     {

@@ -6,6 +6,7 @@ namespace Vulkan
     {
         VERTEX,
         GEOM, // ! CURRENTLY UNSUPPORTED
+        COMPUTE, // ! CURRENTLY UNSUPPORTED
         FRAG
     };
 }

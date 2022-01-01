@@ -26,6 +26,9 @@ Arch:
 * vulkan-tools (optional)
 * vulkan-validation-layers
 
+Other:
+* glslang
+
 # Linux build instructions
 If you are on linux and want to build this project, you've come to the right place.
 
