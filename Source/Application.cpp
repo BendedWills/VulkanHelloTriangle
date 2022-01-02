@@ -59,7 +59,6 @@ bool Application::InitVulkan()
     vulkan.AddDebugMessenger(&callback);
     if (!vulkan.Init(nullptr, nullptr, true))
         return false;
-    
     if (!surface.Init(&vulkan, window))
         return false;
     
@@ -69,7 +68,37 @@ bool Application::InitVulkan()
     
     Vulkan::QueueFamilyIndices indices = 
         vulkan.FindQueueFamilies(physicalDevice, &surface);
+    
+    if (!InitDevice(physicalDevice, indices))
+    {
+        std::cout << "Failed to initialize device!" << std::endl;
+        return false;
+    }
 
+    if (!InitSwapchain(physicalDevice, indices))
+    {
+        std::cout << "Failed to initialize swapchain!" << std::endl;
+        return false;
+    }
+    
+    if (!InitShaders())
+    {
+        std::cout << "Failed to initialize shaders!" << std::endl;
+        return false;
+    }
+
+    if (!InitPipeline())
+    {
+        std::cout << "Failed to initialize pipeline!" << std::endl;
+        return false;
+    }
+    
+    return true;
+}
+
+bool Application::InitDevice(VkPhysicalDevice physicalDevice, 
+    Vulkan::QueueFamilyIndices indices)
+{
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     std::set<uint32_t> uniqueQueueFamilies = {
         indices.graphicsFamilyIndex,
@@ -103,10 +132,15 @@ bool Application::InitVulkan()
     
     graphicsQueue = device.GetDeviceQueue(indices.graphicsFamilyIndex, 0);
     presentQueue = device.GetDeviceQueue(indices.presentFamilyIndex, 0);
+    
+    return true;
+}
 
+bool Application::InitSwapchain(VkPhysicalDevice physicalDevice, 
+    Vulkan::QueueFamilyIndices indices)
+{
     Vulkan::SwapchainDetails details = 
         vulkan.QuerySwapchainSupport(physicalDevice, &surface);
-
     VkSurfaceFormatKHR surfaceFormat = swapchain.ChooseSurfaceFormat(
         details);
 
@@ -129,13 +163,6 @@ bool Application::InitVulkan()
 
     if (!swapchain.Init(&surface, &device, width, height, &swapchainDesc))
         return false;
-    
-    if (!InitShaders())
-    {
-        std::cout << "Failed to initialize shaders!" << std::endl;
-        glslang::FinalizeProcess();
-        return false;
-    }
     
     return true;
 }
@@ -184,6 +211,30 @@ bool Application::InitShaders()
     return true;
 }
 
+bool Application::InitPipeline()
+{
+    Vulkan::ShaderStageDescriptor vertexStage;
+    vertexStage.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertexStage.pModule = &vertexModule;
+    vertexStage.entrypoint = "main";
+
+    Vulkan::ShaderStageDescriptor fragmentStage;
+    vertexStage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    vertexStage.pModule = &fragmentModule;
+    vertexStage.entrypoint = "main";
+
+    Vulkan::PipelineLayoutDescriptor pipelineLayoutDesc{};
+    pipelineLayoutDesc.setLayoutCount = 0; // Optional
+    pipelineLayoutDesc.pSetLayouts = nullptr; // Optional
+    pipelineLayoutDesc.pushConstantRangeCount = 0; // Optional
+    pipelineLayoutDesc.pPushConstantRanges = nullptr; // Optional
+
+    if (!pipelineLayout.Init(&device, &pipelineLayoutDesc))
+        return false;
+
+    return true;
+}
+
 void Application::Render()
 {
     
@@ -191,6 +242,7 @@ void Application::Render()
 
 void Application::Dispose()
 {
+    pipelineLayout.Dispose();
     vertexModule.Dispose();
     fragmentModule.Dispose();
     swapchain.Dispose();

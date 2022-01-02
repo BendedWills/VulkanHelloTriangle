@@ -21,6 +21,13 @@ namespace Vulkan
     class ShaderModule : public IDisposable
     {
     public:
+        ShaderModule() {}
+
+		ShaderModule(const ShaderModule&) = delete;
+		ShaderModule(ShaderModule&&) = delete;
+		ShaderModule& operator=(const ShaderModule&) = delete;
+		ShaderModule& operator=(ShaderModule&&) = delete;
+
         bool Init(Device* pDevice);
     
     #ifdef SHADER_COMPILATION

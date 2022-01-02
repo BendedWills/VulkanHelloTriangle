@@ -21,6 +21,13 @@ namespace Vulkan
 	class Instance : public IDisposable
 	{
 	public:
+		Instance() {}
+
+		Instance(const Instance&) = delete;
+		Instance(Instance&&) = delete;
+		Instance& operator=(const Instance&) = delete;
+		Instance& operator=(Instance&&) = delete;
+
 		/**
 		 * @brief Initializes Vulkan.
 		 * 

@@ -17,6 +17,13 @@ namespace Vulkan
     class Device : public IDisposable
     {
     public:
+        Device() {}
+
+		Device(const Device&) = delete;
+		Device(Device&&) = delete;
+		Device& operator=(const Device&) = delete;
+		Device& operator=(Device&&) = delete;
+        
         /**
          * @brief Initializes the device.
          * 

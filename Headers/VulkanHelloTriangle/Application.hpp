@@ -40,7 +40,12 @@ private:
      *  Otherwise, false.
      */
     bool InitVulkan();
+    bool InitDevice(VkPhysicalDevice physicalDevice, 
+        Vulkan::QueueFamilyIndices indices);
+    bool InitSwapchain(VkPhysicalDevice physicalDevice, 
+        Vulkan::QueueFamilyIndices indices);
     bool InitShaders();
+    bool InitPipeline();
 
     void Render();
 
@@ -56,6 +61,7 @@ private:
     Vulkan::Queue graphicsQueue;
     Vulkan::Queue presentQueue;
     Vulkan::Swapchain swapchain;
+    Vulkan::PipelineLayout pipelineLayout;
 
     // Shader stuff
     Vulkan::ShaderModule vertexModule;

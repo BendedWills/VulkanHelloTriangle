@@ -11,6 +11,11 @@ namespace Vulkan
     public:
         Image() {}
         Image(VkImage* pImage);
+        
+		Image(const Image&) = delete;
+		Image(Image&&) = delete;
+		Image& operator=(const Image&) = delete;
+		Image& operator=(Image&&) = delete;
 
         VkImage* GetImage();
     protected:

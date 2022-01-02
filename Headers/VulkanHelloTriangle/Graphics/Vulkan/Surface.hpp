@@ -16,6 +16,13 @@ namespace Vulkan
     class Surface : public IDisposable
     {
     public:
+        Surface() {}
+
+		Surface(const Surface&) = delete;
+		Surface(Surface&&) = delete;
+		Surface& operator=(const Surface&) = delete;
+		Surface& operator=(Surface&&) = delete;
+
         /**
          * @brief Initializes the surface object.
          * 

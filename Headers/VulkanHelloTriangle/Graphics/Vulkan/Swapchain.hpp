@@ -19,6 +19,13 @@ namespace Vulkan
     class Swapchain : public IDisposable
     {
     public:
+        Swapchain() {}
+
+		Swapchain(const Swapchain&) = delete;
+		Swapchain(Swapchain&&) = delete;
+		Swapchain& operator=(const Swapchain&) = delete;
+		Swapchain& operator=(Swapchain&&) = delete;
+
         /**
          * @brief Initializes the swapchain.
          * 

@@ -17,6 +17,13 @@ namespace Vulkan
     class ImageView : public IDisposable
     {
     public:
+        ImageView() {}
+
+		ImageView(const ImageView&) = delete;
+		ImageView(ImageView&&) = delete;
+		ImageView& operator=(const ImageView&) = delete;
+		ImageView& operator=(ImageView&&) = delete;
+
         /**
          * @brief Initializes the image view.
          * 
