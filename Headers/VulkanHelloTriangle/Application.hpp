@@ -45,7 +45,9 @@ private:
     bool InitSwapchain(VkPhysicalDevice physicalDevice, 
         Vulkan::QueueFamilyIndices indices);
     bool InitShaders();
+    bool InitRenderPass();
     bool InitPipeline();
+    bool InitFramebuffers();
 
     void Render();
 
@@ -62,10 +64,15 @@ private:
     Vulkan::Queue presentQueue;
     Vulkan::Swapchain swapchain;
     Vulkan::PipelineLayout pipelineLayout;
+    Vulkan::RenderPass renderPass;
+    Vulkan::Pipeline pipeline;
 
     // Shader stuff
     Vulkan::ShaderModule vertexModule;
     Vulkan::ShaderModule fragmentModule;
+    
+    std::vector<Ref<Vulkan::Framebuffer>> framebuffers;
+    std::vector<Ref<Vulkan::ImageView>> swapchainImageViews;
 
     DebugCallback callback;
 };

@@ -1,0 +1,13 @@
+{
+   ignore_libnvidia-glcore_conditional_jump_errors
+   Memcheck:Cond
+   ...
+   obj:*/libnvidia-glcore.so.*
+}
+
+{
+   ignore_libdl_conditional_jump_errors
+   Memcheck:Cond
+   ...
+   obj:*/libdl.so.*
+}

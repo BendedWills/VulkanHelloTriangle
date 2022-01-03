@@ -4,6 +4,9 @@ using namespace Vulkan;
 
 bool PipelineLayout::Init(Device* pDevice, PipelineLayoutDescriptor* pDesc)
 {
+    if (initialized)
+		return false;
+    
     this->pDevice = pDevice;
     
     VkPipelineLayoutCreateInfo createInfo{};
@@ -19,6 +22,11 @@ bool PipelineLayout::Init(Device* pDevice, PipelineLayoutDescriptor* pDesc)
     
     initialized = true;
     return true;
+}
+
+VkPipelineLayout* PipelineLayout::GetPipelineLayout()
+{
+    return &pipelineLayout;
 }
 
 void PipelineLayout::OnDispose()

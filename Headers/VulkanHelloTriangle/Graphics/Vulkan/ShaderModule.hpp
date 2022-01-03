@@ -72,6 +72,8 @@ namespace Vulkan
             std::string& debugLog
         );
     #endif
+
+        VkShaderModule* GetModule();
     protected:
         void OnDispose();
     private:

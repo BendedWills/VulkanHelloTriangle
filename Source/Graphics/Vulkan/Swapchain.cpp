@@ -135,13 +135,15 @@ std::vector<Ref<Image>> Swapchain::GetImages()
 	return vkHelloImages;
 }
 
-std::vector<Ref<ImageView>> Swapchain::GetImageViews()
+bool Swapchain::GetImageViews(std::vector<Ref<ImageView>>* pVec)
 {
 	std::vector<Ref<Image>> images = GetImages();
-	
-	std::vector<Ref<ImageView>> imageViews;
-	for (Ref<Image> image : images)
+
+	pVec->resize(images.size());
+	for (uint64_t i = 0; i < images.size(); i++)
 	{
+		Ref<Image> image = images[i];
+
 		ImageViewDescriptor desc;
 		desc.format = imageFormat;
 		desc.viewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -151,14 +153,12 @@ std::vector<Ref<ImageView>> Swapchain::GetImageViews()
 		desc.subresourceRange.baseArrayLayer = 0;
 		desc.subresourceRange.layerCount = 1;
 
-		Ref<ImageView> view = RefTools::Create<ImageView>();
-		if (!view->Init(pDevice, image.get(), &desc))
-			return std::vector<Ref<ImageView>>();
-
-		imageViews.push_back(view);
+		pVec->at(i) = RefTools::Create<ImageView>();
+		if (!pVec->at(i)->Init(pDevice, image.get(), &desc))
+			return false;
 	}
 
-	return imageViews;
+	return true;
 }
 
 VkExtent2D Swapchain::GetExtent()

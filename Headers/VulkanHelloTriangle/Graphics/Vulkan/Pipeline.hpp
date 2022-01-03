@@ -2,6 +2,7 @@
 
 #include <VulkanHelloTriangle/Common/IDisposable.hpp>
 #include <VulkanHelloTriangle/Graphics/Vulkan/Device.hpp>
+#include <VulkanHelloTriangle/Graphics/Vulkan/Common/PipelineDescriptor.hpp>
 
 #include <vulkan/vulkan.h>
 
@@ -17,7 +18,9 @@ namespace Vulkan
 		Pipeline& operator=(const Pipeline&) = delete;
 		Pipeline& operator=(Pipeline&&) = delete;
 
-        bool Init(Device* pDevice);
+        bool Init(Device* pDevice, PipelineDescriptor* pDesc);
+
+        VkPipeline* GetPipeline();
     protected:
         void OnDispose();
     private:

@@ -11,6 +11,11 @@ bool ImageView::Init(Device* pDevice, Image* pImage,
 bool ImageView::Init(Device* pDevice, VkImage image, 
     ImageViewDescriptor* pDesc)
 {
+    if (initialized)
+        return false;
+    
+    this->pDevice = pDevice;
+    
     VkImageViewCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     createInfo.image = image;
@@ -27,7 +32,13 @@ bool ImageView::Init(Device* pDevice, VkImage image,
         &imageView))
         return false;
 
+    initialized = true;
     return true;
+}
+
+VkImageView* ImageView::GetImageView()
+{
+    return &imageView;
 }
 
 void ImageView::OnDispose()

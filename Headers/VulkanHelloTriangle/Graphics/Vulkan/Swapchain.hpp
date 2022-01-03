@@ -61,7 +61,7 @@ namespace Vulkan
 
         uint32_t GetImageCount();
         std::vector<Ref<Image>> GetImages();
-        std::vector<Ref<ImageView>> GetImageViews();
+        bool GetImageViews(std::vector<Ref<ImageView>>* pVec);
 
         VkExtent2D GetExtent();
         VkFormat GetImageFormat();

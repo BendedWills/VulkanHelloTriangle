@@ -19,6 +19,8 @@ namespace Vulkan
 		PipelineLayout& operator=(PipelineLayout&&) = delete;
 
         bool Init(Device* pDevice, PipelineLayoutDescriptor* pDesc);
+
+        VkPipelineLayout* GetPipelineLayout();
     protected:
         void OnDispose();
     private:

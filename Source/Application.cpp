@@ -87,9 +87,21 @@ bool Application::InitVulkan()
         return false;
     }
 
+    if (!InitRenderPass())
+    {
+        std::cout << "Failed to initialize render pass!" << std::endl;
+        return false;
+    }
+
     if (!InitPipeline())
     {
         std::cout << "Failed to initialize pipeline!" << std::endl;
+        return false;
+    }
+
+    if (!InitFramebuffers())
+    {
+        std::cout << "Failed to initialize framebuffers!" << std::endl;
         return false;
     }
     
@@ -144,7 +156,7 @@ bool Application::InitSwapchain(VkPhysicalDevice physicalDevice,
     VkSurfaceFormatKHR surfaceFormat = swapchain.ChooseSurfaceFormat(
         details);
 
-    Vulkan::SwapchainDescriptor swapchainDesc;
+    Vulkan::SwapchainDescriptor swapchainDesc{};
     swapchainDesc.imageFormat = surfaceFormat.format;
     swapchainDesc.imageColorSpace = surfaceFormat.colorSpace;
     swapchainDesc.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -162,6 +174,9 @@ bool Application::InitSwapchain(VkPhysicalDevice physicalDevice,
     glfwGetFramebufferSize(window, &width, &height);
 
     if (!swapchain.Init(&surface, &device, width, height, &swapchainDesc))
+        return false;
+    
+    if (!swapchain.GetImageViews(&swapchainImageViews))
         return false;
     
     return true;
@@ -211,26 +226,191 @@ bool Application::InitShaders()
     return true;
 }
 
+bool Application::InitRenderPass()
+{
+    Vulkan::AttachmentDescriptor colorAttachment{};
+    colorAttachment.format = swapchain.GetImageFormat();
+    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    Vulkan::AttachmentReference colorAttachmentReference{};
+    colorAttachmentReference.attachment = 0;
+    colorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    Vulkan::SubpassDescriptor subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorAttachmentReference;
+
+    Vulkan::RenderPassDescriptor desc{};
+    desc.attachmentCount = 1;
+    desc.pAttachments = &colorAttachment;
+    desc.subpassCount = 1;
+    desc.pSubpasses = &subpass;
+
+    if (!renderPass.Init(&device, &desc))
+        return false;
+
+    return true;
+}
+
 bool Application::InitPipeline()
 {
-    Vulkan::ShaderStageDescriptor vertexStage;
+    Vulkan::ShaderStageDescriptor vertexStage{};
     vertexStage.stage = VK_SHADER_STAGE_VERTEX_BIT;
     vertexStage.pModule = &vertexModule;
     vertexStage.entrypoint = "main";
 
-    Vulkan::ShaderStageDescriptor fragmentStage;
+    Vulkan::ShaderStageDescriptor fragmentStage{};
     vertexStage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     vertexStage.pModule = &fragmentModule;
     vertexStage.entrypoint = "main";
 
     Vulkan::PipelineLayoutDescriptor pipelineLayoutDesc{};
-    pipelineLayoutDesc.setLayoutCount = 0; // Optional
-    pipelineLayoutDesc.pSetLayouts = nullptr; // Optional
-    pipelineLayoutDesc.pushConstantRangeCount = 0; // Optional
-    pipelineLayoutDesc.pPushConstantRanges = nullptr; // Optional
+    pipelineLayoutDesc.setLayoutCount = 0; 
+    pipelineLayoutDesc.pSetLayouts = nullptr; 
+    pipelineLayoutDesc.pushConstantRangeCount = 0; 
+    pipelineLayoutDesc.pPushConstantRanges = nullptr; 
 
     if (!pipelineLayout.Init(&device, &pipelineLayoutDesc))
         return false;
+    
+    Vulkan::VertexInputDescriptor vertexInputInfo{};
+    vertexInputInfo.vertexBindingDescriptionCount = 0;
+    vertexInputInfo.pVertexBindingDescriptions = nullptr; 
+    vertexInputInfo.vertexAttributeDescriptionCount = 0;
+    vertexInputInfo.pVertexAttributeDescriptions = nullptr; 
+
+    Vulkan::InputAssemblyDescriptor inputAssembly{};
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+    VkExtent2D swapchainExtent = swapchain.GetExtent();
+
+    Vulkan::Viewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = (float)swapchainExtent.width;
+    viewport.height = (float)swapchainExtent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    Vulkan::Rect2D scissor{};
+    scissor.x = 0;
+    scissor.y = 0;
+    scissor.width = swapchainExtent.width;
+    scissor.height = swapchainExtent.height;
+
+    Vulkan::ViewportStateDescriptor viewportState{};
+    viewportState.viewportCount = 1;
+    viewportState.pViewports = &viewport;
+    viewportState.scissorCount = 1;
+    viewportState.pScissors = &scissor;
+
+    Vulkan::RasterizerStateDescriptor rasterizer{};
+    rasterizer.depthClampEnable = VK_FALSE;
+    rasterizer.rasterizerDiscardEnable = VK_FALSE;
+    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizer.lineWidth = 1.0f;
+    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterizer.depthBiasEnable = VK_FALSE;
+    rasterizer.depthBiasConstantFactor = 0.0f; 
+    rasterizer.depthBiasClamp = 0.0f; 
+    rasterizer.depthBiasSlopeFactor = 0.0f; 
+
+    Vulkan::MultisampleDescriptor multisampling{};
+    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisampling.minSampleShading = 1.0f; 
+    multisampling.pSampleMask = nullptr; 
+    multisampling.alphaToCoverageEnable = VK_FALSE; 
+    multisampling.alphaToOneEnable = VK_FALSE; 
+
+    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.blendEnable = VK_FALSE;
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; 
+    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; 
+    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; 
+    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; 
+    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; 
+    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; 
+
+    Vulkan::ColorBlendStateDescriptor colorBlending{};
+    colorBlending.logicOpEnable = VK_FALSE;
+    colorBlending.logicOp = VK_LOGIC_OP_COPY; 
+    colorBlending.attachmentCount = 1;
+    colorBlending.pAttachments = &colorBlendAttachment;
+
+    Vulkan::ShaderStageDescriptor vertShaderStageInfo{};
+    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertShaderStageInfo.pModule = &vertexModule;
+    vertShaderStageInfo.entrypoint = "main";
+
+    Vulkan::ShaderStageDescriptor fragShaderStageInfo{};
+    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragShaderStageInfo.pModule = &fragmentModule;
+    fragShaderStageInfo.entrypoint = "main";
+
+    Vulkan::ShaderStageDescriptor stages[] =
+    {
+        vertShaderStageInfo, fragShaderStageInfo
+    };
+
+    Vulkan::PipelineDescriptor pipelineDesc{};
+    pipelineDesc.stageCount = 2;
+    pipelineDesc.pStages = stages;
+    pipelineDesc.pVertexInputDesc = &vertexInputInfo;
+    pipelineDesc.pInputAssemblyDesc = &inputAssembly;
+    pipelineDesc.pViewportState = &viewportState;
+    pipelineDesc.pRasterizerStateDesc = &rasterizer;
+    pipelineDesc.pMultisampleDesc = &multisampling;
+    pipelineDesc.pDepthStencilState = nullptr; 
+    pipelineDesc.pColorBlendStateDesc = &colorBlending;
+    pipelineDesc.pDynamicStateDesc = nullptr; 
+    pipelineDesc.pLayout = &pipelineLayout;
+    pipelineDesc.pRenderPass = &renderPass;
+    pipelineDesc.subpass = 0;
+
+    if (!pipeline.Init(&device, &pipelineDesc))
+        return false;
+
+    return true;
+}
+
+bool Application::InitFramebuffers()
+{
+    VkExtent2D swapchainExtent = swapchain.GetExtent();
+
+    uint64_t imageViewCount = swapchainImageViews.size();
+    
+    framebuffers.resize(imageViewCount);
+
+    for (uint64_t i = 0; i < imageViewCount; i++)
+    {
+        Vulkan::ImageView* attachments[] = 
+        {
+            swapchainImageViews[i].get()
+        };
+
+        Vulkan::FramebufferDescriptor framebufferDesc{};
+        framebufferDesc.pRenderPass = &renderPass;
+        framebufferDesc.attachmentCount = 1;
+        framebufferDesc.ppAttachments = attachments;
+        framebufferDesc.width = swapchainExtent.width;
+        framebufferDesc.height = swapchainExtent.height;
+        framebufferDesc.layers = 1;
+
+        framebuffers[i] = RefTools::Create<Vulkan::Framebuffer>();
+        if (!framebuffers[i]->Init(&device, &framebufferDesc))
+            return false;
+    }
 
     return true;
 }
@@ -242,9 +422,18 @@ void Application::Render()
 
 void Application::Dispose()
 {
+    for (auto framebuffer : framebuffers)
+        framebuffer->Dispose();
+    
+    pipeline.Dispose();
     pipelineLayout.Dispose();
+    renderPass.Dispose();
     vertexModule.Dispose();
     fragmentModule.Dispose();
+
+    for (auto imageView : swapchainImageViews)
+        imageView->Dispose();
+
     swapchain.Dispose();
     device.Dispose();
     surface.Dispose();

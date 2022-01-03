@@ -111,6 +111,11 @@ bool ShaderModule::CompileGLSL(
 }
 #endif
 
+VkShaderModule* ShaderModule::GetModule()
+{
+	return &shaderModule;
+}
+
 void ShaderModule::OnDispose()
 {
     if (!shaderCreated)
