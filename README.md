@@ -7,9 +7,7 @@ Note: This project is still a work in progress.
 
 The result of this program should look something like this. Feel free to copy and paste code:
 
-This is not my hello triangle. This is just what I want mine to look like at the end. https://imgur.com/pHEHvMU
-
-![Vulkan hello triangle](https://i.imgur.com/pHEHvMU.png)
+![Vulkan hello triangle](https://github.com/BendedWills/VulkanHelloTriangle/blob/main/triangle.png?raw=true)
 
 # Linux dependencies
 Ubuntu:
