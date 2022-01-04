@@ -27,13 +27,15 @@ void Application::Start()
         return;
     }
 
+    Render();
+
     std::cout << "Started application" << std::endl;
 
     // glfwWindowShouldClose returns if the user has closed the window
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
-        Render();
+        Present();
     }
 
     Dispose();
@@ -102,6 +104,18 @@ bool Application::InitVulkan()
     if (!InitFramebuffers())
     {
         std::cout << "Failed to initialize framebuffers!" << std::endl;
+        return false;
+    }
+
+    if (!InitCommandPool(indices))
+    {
+        std::cout << "Failed to initialize command pool!" << std::endl;
+        return false;
+    }
+
+    if (!InitSemaphores())
+    {
+        std::cout << "Failed to initialize semaphores!" << std::endl;
         return false;
     }
     
@@ -247,11 +261,21 @@ bool Application::InitRenderPass()
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentReference;
 
+    VkSubpassDependency dependency{};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
     Vulkan::RenderPassDescriptor desc{};
     desc.attachmentCount = 1;
     desc.pAttachments = &colorAttachment;
     desc.subpassCount = 1;
     desc.pSubpasses = &subpass;
+    desc.dependencyCount = 1;
+    desc.pDependencies = &dependency;
 
     if (!renderPass.Init(&device, &desc))
         return false;
@@ -415,13 +439,99 @@ bool Application::InitFramebuffers()
     return true;
 }
 
+bool Application::InitCommandPool(Vulkan::QueueFamilyIndices indices)
+{
+    if (!commandPool.Init(&device, indices.graphicsFamilyIndex, 0))
+        return false;
+    
+    commandBuffers.resize(framebuffers.size());
+    if (!commandPool.AllocateCommandBuffers(VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        commandBuffers.size(), commandBuffers.data()))
+        return false;
+    
+    return true;
+}
+
+bool Application::InitSemaphores()
+{
+    if (!imageAvailableSemaphore.Init(&device))
+        return false;
+    if (!renderFinishedSemaphore.Init(&device))
+        return false;
+
+    return true;
+}
+
 void Application::Render()
 {
+    VkExtent2D swapchainExtent = swapchain.GetExtent();
+
+    //commandPool.Reset();
+    for (uint64_t i = 0; i < commandBuffers.size(); i++)
+    {
+        Vulkan::CommandBuffer cmds = commandBuffers[i];
+
+        VkClearValue clearColor = {{{ 0.0f, 0.0f, 0.0f, 1.0f }}};
+
+        Vulkan::RenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.pRenderPass = &renderPass;
+        renderPassInfo.pFramebuffer = framebuffers[i].get();
+        renderPassInfo.renderArea.offset = { 0, 0 };
+        renderPassInfo.renderArea.extent = swapchainExtent;
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = &clearColor;
+
+        cmds.Begin(0, nullptr);
+        {
+            cmds.BeginRenderPass(&renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+            {
+                cmds.BindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, &pipeline);
+                cmds.Draw(3, 1, 0, 0);
+            }
+            cmds.EndRenderPass();
+        }
+        cmds.End();
+    }
+}
+
+void Application::Present()
+{
+    uint32_t imageIndex = imageAvailableSemaphore.AcquireNextImage(&swapchain,
+        UINT64_MAX);
     
+    VkPipelineStageFlags waitStages[] = 
+    { 
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT 
+    };
+    
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = imageAvailableSemaphore.GetSemaphore();
+    submitInfo.pWaitDstStageMask = waitStages;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = commandBuffers[imageIndex].GetCommandBuffer();
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = renderFinishedSemaphore.GetSemaphore();
+
+    graphicsQueue.Submit(1, &submitInfo);
+
+    VkPresentInfoKHR presentInfo{};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = renderFinishedSemaphore.GetSemaphore();
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = swapchain.GetSwapchain();
+    presentInfo.pResults = nullptr;
+    presentInfo.pImageIndices = &imageIndex;
+
+    presentQueue.Present(&presentInfo);
 }
 
 void Application::Dispose()
 {
+    commandPool.Dispose();
+
     for (auto framebuffer : framebuffers)
         framebuffer->Dispose();
     

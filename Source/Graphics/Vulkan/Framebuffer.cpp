@@ -45,6 +45,11 @@ bool Framebuffer::Init(Device* pDevice, FramebufferDescriptor* pDesc)
     return true;
 }
 
+VkFramebuffer* Framebuffer::GetFramebuffer()
+{
+    return &framebuffer;
+}
+
 void Framebuffer::OnDispose()
 {
     vkDestroyFramebuffer(*pDevice->GetDevice(), framebuffer, nullptr);

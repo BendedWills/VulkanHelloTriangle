@@ -55,18 +55,20 @@ bool RenderPass::Init(Device* pDevice, RenderPassDescriptor* pDesc)
         SubpassDescriptor* descriptor = pDesc->pSubpasses + i;
         VkSubpassDescription* desc = subpasses + i;
 
-        desc->pipelineBindPoint = descriptor->pipelineBindPoint;
-        desc->colorAttachmentCount = descriptor->colorAttachmentCount;
-        
         VkAttachmentReference* colorAttachments = (VkAttachmentReference*)
             malloc(sizeof(VkAttachmentReference) * desc->colorAttachmentCount);
+
+        desc->pipelineBindPoint = descriptor->pipelineBindPoint;
+        desc->colorAttachmentCount = descriptor->colorAttachmentCount;
+        desc->pColorAttachments = colorAttachments;
+
         if (!colorAttachments)
         {
             free(attachments);
             free(subpasses);
 
             // Free all other created subpasses
-            for (uint64_t i2 = 0; i2 < i + 1; i2++)
+            for (uint64_t i2 = 0; i2 < i; i2++)
                 free((void*)subpasses[i2].pColorAttachments);
 
             return false;
@@ -80,8 +82,6 @@ bool RenderPass::Init(Device* pDevice, RenderPassDescriptor* pDesc)
             vkattachment->attachment = attachment->attachment;
             vkattachment->layout = attachment->layout;
         }
-
-        desc->pColorAttachments = colorAttachments;
     }
 
     VkRenderPassCreateInfo createInfo{};
@@ -90,6 +90,8 @@ bool RenderPass::Init(Device* pDevice, RenderPassDescriptor* pDesc)
     createInfo.pAttachments = attachments;
     createInfo.subpassCount = pDesc->subpassCount;
     createInfo.pSubpasses = subpasses;
+    createInfo.dependencyCount = pDesc->dependencyCount;
+    createInfo.pDependencies = pDesc->pDependencies;
     
     if (vkCreateRenderPass(*pDevice->GetDevice(), &createInfo, nullptr, 
         &renderPass) != VK_SUCCESS)

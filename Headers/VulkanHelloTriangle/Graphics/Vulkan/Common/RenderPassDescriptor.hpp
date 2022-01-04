@@ -12,5 +12,7 @@ namespace Vulkan
         AttachmentDescriptor* pAttachments;
         uint32_t subpassCount;
         SubpassDescriptor* pSubpasses;
+        uint32_t dependencyCount;
+        VkSubpassDependency* pDependencies;
     };
 }

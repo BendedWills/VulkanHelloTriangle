@@ -11,4 +11,7 @@
 #include <VulkanHelloTriangle/Graphics/Vulkan/PipelineLayout.hpp>
 #include <VulkanHelloTriangle/Graphics/Vulkan/RenderPass.hpp>
 #include <VulkanHelloTriangle/Graphics/Vulkan/Framebuffer.hpp>
+#include <VulkanHelloTriangle/Graphics/Vulkan/CommandPool.hpp>
+#include <VulkanHelloTriangle/Graphics/Vulkan/Semaphore.hpp>
+#include <VulkanHelloTriangle/Graphics/Vulkan/Queue.hpp>
 #include <VulkanHelloTriangle/Graphics/Vulkan/Common/ShaderStageDescriptor.hpp>

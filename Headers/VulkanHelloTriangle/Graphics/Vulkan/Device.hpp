@@ -7,13 +7,13 @@
 #include <vector>
 
 #include <VulkanHelloTriangle/Common/IDisposable.hpp>
-#include <VulkanHelloTriangle/Graphics/Vulkan/Queue.hpp>
 
 #include <vulkan/vulkan.h>
 
 namespace Vulkan
 {
     class Instance;
+    class Queue;
     class Device : public IDisposable
     {
     public:

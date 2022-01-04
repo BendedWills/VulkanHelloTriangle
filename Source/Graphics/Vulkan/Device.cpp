@@ -1,4 +1,5 @@
 #include <VulkanHelloTriangle/Graphics/Vulkan/Instance.hpp>
+#include <VulkanHelloTriangle/Graphics/Vulkan/Queue.hpp>
 
 using namespace Vulkan;
 

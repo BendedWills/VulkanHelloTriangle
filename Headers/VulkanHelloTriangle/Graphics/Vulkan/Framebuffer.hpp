@@ -21,7 +21,7 @@ namespace Vulkan
         /**
          * @brief Initializes the image view.
          * 
-         * @param pDevice A pointer to the device this image view is being
+         * @param pDevice A pointer to the device this framebuffer is being
          *  created for.
          * @param pDesc The framebuffer descriptor.
          * 
