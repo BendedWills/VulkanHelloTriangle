@@ -48,7 +48,7 @@ bool ShaderModule::FromSpirV(uint32_t* spv, uint64_t spvSize)
     createInfo.codeSize = spvSize * sizeof(uint32_t);
     createInfo.pCode = spv;
 
-    if (vkCreateShaderModule(*pDevice->GetDevice(), &createInfo, nullptr,
+    if (vkCreateShaderModule(pDevice->Get(), &createInfo, nullptr,
         &shaderModule) != VK_SUCCESS)
         return false;
 
@@ -111,9 +111,9 @@ bool ShaderModule::CompileGLSL(
 }
 #endif
 
-VkShaderModule* ShaderModule::GetModule()
+VkShaderModule ShaderModule::Get()
 {
-	return &shaderModule;
+	return shaderModule;
 }
 
 void ShaderModule::OnDispose()
@@ -122,7 +122,7 @@ void ShaderModule::OnDispose()
         return;
     
     shaderCreated = false;
-    vkDestroyShaderModule(*pDevice->GetDevice(), shaderModule, nullptr);
+    vkDestroyShaderModule(pDevice->Get(), shaderModule, nullptr);
 }
 
 void ShaderModule::InitResources(TBuiltInResource& resources)

@@ -146,27 +146,6 @@ bool Instance::Init(
 	return true;
 }
 
-bool Instance::PickDevice(VkPhysicalDevice* pDevice, Surface* pSurface)
-{
-	uint32_t deviceCount = 0;
-	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
-
-	if (deviceCount == 0)
-		return false;
-	
-	std::vector<VkPhysicalDevice> devices(deviceCount);
-	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
-
-	for (VkPhysicalDevice device : devices)
-		if (IsDeviceSuitable(device, pSurface))
-		{
-			*pDevice = device;
-			return true;
-		}
-	
-	return false;
-}
-
 Vulkan::QueueFamilyIndices Instance::FindQueueFamilies(
 	VkPhysicalDevice device, Surface* pSurface)
 {
@@ -195,7 +174,7 @@ Vulkan::QueueFamilyIndices Instance::FindQueueFamilies(
 		{
 			VkBool32 presentSupport = false;
 			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, 
-				*pSurface->GetSurface(), &presentSupport);
+				pSurface->Get(), &presentSupport);
 			if (presentSupport)
 			{
 				queueFamilies.hasPresentFamily = true;
@@ -212,7 +191,7 @@ Vulkan::QueueFamilyIndices Instance::FindQueueFamilies(
 SwapchainDetails Instance::QuerySwapchainSupport(
 	VkPhysicalDevice device, Surface* pSurface)
 {
-	VkSurfaceKHR surface = *pSurface->GetSurface();
+	VkSurfaceKHR surface = pSurface->Get();
 
 	SwapchainDetails details;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, 
@@ -268,12 +247,12 @@ void Instance::RemoveDebugMessenger(DebugCallback* callback)
 		}
 }
 
-VkInstance* Instance::GetInstance()
+VkInstance Instance::Get()
 {
 	if (!initialized)
 		return nullptr;
 	
-	return &instance;
+	return instance;
 }
 
 void Instance::DispatchDebugMessage(
@@ -305,54 +284,30 @@ void Instance::OnDispose()
 	vkDestroyInstance(instance, nullptr);
 }
 
-bool Instance::IsDeviceSuitable(VkPhysicalDevice device, Surface* pSurface)
-{
-	VkPhysicalDeviceProperties deviceProperties;
-	VkPhysicalDeviceFeatures deviceFeatures;
-	vkGetPhysicalDeviceProperties(device, &deviceProperties);
-	vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-
-	QueueFamilyIndices families = FindQueueFamilies(device, pSurface);
-
-	bool extentionsSupported = CheckDeviceExtentionSupport(device);
-
-	bool swapChainGood = false;
-	if (extentionsSupported)
-	{
-		SwapchainDetails details = QuerySwapchainSupport(device, pSurface);
-		swapChainGood = !details.formats.empty() 
-			&& !details.presentModes.empty();
-	}
-
-	return 
-		deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
-		&& deviceFeatures.geometryShader
-		&& families.hasGraphicsFamily
-		&& families.hasPresentFamily
-		&& swapChainGood
-		&& extentionsSupported;
-}
-
-bool Instance::CheckDeviceExtentionSupport(VkPhysicalDevice device)
+bool Instance::CheckDeviceExtentionSupport(VkPhysicalDevice device, 
+	const char*const * deviceExtentions, uint64_t extentionCount)
 {
 	// The device requires some extentions (such as the swap chain)
 	// We need to check for those here before we can use the device.
 
-	uint32_t extentionCount;
-	vkEnumerateDeviceExtensionProperties(device, nullptr, &extentionCount,
+	uint32_t count;
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &count,
 		nullptr);
 	
-	std::vector<VkExtensionProperties> availableExtentions(extentionCount);
-	vkEnumerateDeviceExtensionProperties(device, nullptr, &extentionCount,
+	std::vector<VkExtensionProperties> availableExtentions(count);
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &count,
 		availableExtentions.data());
 	
-	std::set<std::string> requiredExtentions(deviceExtensions.begin(),
-		deviceExtensions.end());
+	std::vector<std::string> requiredExtentions(extentionCount);
+	for (uint64_t i = 0; i < extentionCount; i++)
+		requiredExtentions[i] = std::string(deviceExtentions[i]);
+	std::set<std::string> requiredExtentionSet(requiredExtentions.begin(),
+		requiredExtentions.end());
 	
 	for (VkExtensionProperties extention : availableExtentions)
-		requiredExtentions.erase(extention.extensionName);
+		requiredExtentionSet.erase(extention.extensionName);
 	
-	return requiredExtentions.empty();
+	return requiredExtentionSet.empty();
 }
 
 bool Instance::CheckValidationLayerSupport(std::vector<const char*> layers)

@@ -13,7 +13,6 @@
 namespace Vulkan
 {
     class Instance;
-    class Queue;
     class Device : public IDisposable
     {
     public:
@@ -57,9 +56,11 @@ namespace Vulkan
          * 
          * @returns The queue object.
          */
-        Queue GetDeviceQueue(uint32_t familyIndex, uint32_t queueIndex);
+        VkQueue GetDeviceQueue(uint32_t familyIndex, uint32_t queueIndex);
+
+        void WaitIdle();
         
-        VkDevice* GetDevice();
+        VkDevice Get();
     protected:
         void OnDispose();
     private:

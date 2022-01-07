@@ -1,5 +1,4 @@
 #include <VulkanHelloTriangle/Graphics/Vulkan/Instance.hpp>
-#include <VulkanHelloTriangle/Graphics/Vulkan/Queue.hpp>
 
 using namespace Vulkan;
 
@@ -45,17 +44,22 @@ bool Device::Init(
     return true;
 }
 
-Queue Device::GetDeviceQueue(uint32_t familyIndex, uint32_t queueIndex)
+VkQueue Device::GetDeviceQueue(uint32_t familyIndex, uint32_t queueIndex)
 {
     VkQueue queue;
     vkGetDeviceQueue(device, familyIndex, queueIndex, &queue);
 
-    return Queue(&queue);
+    return queue;
 }
 
-VkDevice* Device::GetDevice()
+void Device::WaitIdle()
 {
-    return &device;
+    vkDeviceWaitIdle(device);
+}
+
+VkDevice Device::Get()
+{
+    return device;
 }
 
 void Device::OnDispose()

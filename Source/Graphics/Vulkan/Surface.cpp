@@ -11,7 +11,7 @@ bool Surface::Init(Instance* pInstance, GLFWwindow* window)
     this->pInstance = pInstance;
 
     if (glfwCreateWindowSurface(
-            *pInstance->GetInstance(),
+            pInstance->Get(),
             window,
             nullptr,
             &surface
@@ -22,12 +22,12 @@ bool Surface::Init(Instance* pInstance, GLFWwindow* window)
     return true;
 }
 
-VkSurfaceKHR* Surface::GetSurface()
+VkSurfaceKHR Surface::Get()
 {
-    return &surface;
+    return surface;
 }
 
 void Surface::OnDispose()
 {
-    vkDestroySurfaceKHR(*pInstance->GetInstance(), surface, nullptr);
+    vkDestroySurfaceKHR(pInstance->Get(), surface, nullptr);
 }

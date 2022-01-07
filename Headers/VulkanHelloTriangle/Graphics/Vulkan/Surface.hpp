@@ -33,7 +33,7 @@ namespace Vulkan
          */
         bool Init(Instance* pInstance, GLFWwindow* window);
 
-        VkSurfaceKHR* GetSurface();
+        VkSurfaceKHR Get();
     protected:
         void OnDispose();
     private:

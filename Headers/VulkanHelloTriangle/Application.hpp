@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <vulkan/vulkan.h>
+
 #include <iostream>
 #include <vector>
 
@@ -58,29 +60,4 @@ private:
      * @brief Cleans up the application.
      */
     void Dispose();
-
-    GLFWwindow* window = nullptr;
-    Vulkan::Instance vulkan;
-    Vulkan::Surface surface;
-    Vulkan::Device device;
-    Vulkan::Queue graphicsQueue;
-    Vulkan::Queue presentQueue;
-    Vulkan::Swapchain swapchain;
-    Vulkan::PipelineLayout pipelineLayout;
-    Vulkan::RenderPass renderPass;
-    Vulkan::Pipeline pipeline;
-    Vulkan::CommandPool commandPool;
-
-    // Shader stuff
-    Vulkan::ShaderModule vertexModule;
-    Vulkan::ShaderModule fragmentModule;
-
-    Vulkan::Semaphore imageAvailableSemaphore;
-    Vulkan::Semaphore renderFinishedSemaphore;
-    
-    std::vector<Ref<Vulkan::Framebuffer>> framebuffers;
-    std::vector<Ref<Vulkan::ImageView>> swapchainImageViews;
-    std::vector<Vulkan::CommandBuffer> commandBuffers;
-
-    DebugCallback callback;
 };

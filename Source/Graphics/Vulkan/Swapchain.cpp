@@ -4,21 +4,22 @@
 
 using namespace Vulkan;
 
-bool Swapchain::Init(Surface* pSurface, Device* pDevice,
+bool Swapchain::Init(
+	Surface* pSurface,
+	Device* pDevice,
 	uint64_t width, uint64_t height,
-	SwapchainDescriptor* swapchainDesc)
+	SwapchainDetails details,
+	VkSwapchainCreateInfoKHR* createInfo
+)
 {
 	if (initialized)
 		return false;
 	
 	this->pDevice = pDevice;
-	this->imageFormat = swapchainDesc->imageFormat;
+	this->imageFormat = createInfo->imageFormat;
 	this->width = width;
 	this->height = height;
-	
-	SwapchainDetails details = swapchainDesc->details;
-	VkPresentModeKHR presentMode = ChoosePresentMode(details.presentModes);
-	this->extent = ChooseExtent(details.capabilities, width, height);
+	this->extent = createInfo->imageExtent;
 	
 	// I don't know how else to explain this so I'm just going to quote this
 	// from vulkan-tutorial.com:
@@ -38,65 +39,8 @@ bool Swapchain::Init(Surface* pSurface, Device* pDevice,
 	if (max > 0 && imageCount > max)
 		imageCount = max;
 
-	VkSwapchainCreateInfoKHR createInfo{};
-	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	createInfo.surface = *pSurface->GetSurface();
-
-	// Image stuff
-	createInfo.minImageCount = imageCount;
-	createInfo.imageFormat = swapchainDesc->imageFormat;
-	createInfo.imageColorSpace = swapchainDesc->imageColorSpace;
-	createInfo.imageExtent = extent;
-	createInfo.imageArrayLayers = 1;
-
-	// This will probably be changed later on to take in a parameter in this
-	// function.
-	// This parameter in the swapchain specifies what the images in the
-	// swapchain are used for.
-	// This may seem familiar if you have done computer graphics before,
-	// as this is only the color attachment. There are others too, such as
-	// the depth buffer.
-	createInfo.imageUsage = swapchainDesc->imageUsage;
-
-	switch (swapchainDesc->imageSharingMode)
-	{
-		case VkSharingMode::VK_SHARING_MODE_CONCURRENT:
-		{
-			if (!swapchainDesc->familyIndices.hasPresentFamily)
-				return false;
-			
-			uint32_t queueFamilyIndices[] = 
-			{
-				swapchainDesc->familyIndices.graphicsFamilyIndex, 
-				swapchainDesc->familyIndices.presentFamilyIndex
-			};
-
-			createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-			createInfo.queueFamilyIndexCount = 2;
-			createInfo.pQueueFamilyIndices = queueFamilyIndices;
-		}
-		break;
-
-		case VkSharingMode::VK_SHARING_MODE_EXCLUSIVE:
-		{
-			createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-			createInfo.queueFamilyIndexCount = 0;
-			createInfo.pQueueFamilyIndices = nullptr;
-		}
-		break;
-
-		default: 
-			return false;
-	}
-
-	createInfo.preTransform = swapchainDesc->preTransform;
-	createInfo.compositeAlpha = swapchainDesc->compositeAlpha;
-	createInfo.presentMode = presentMode;
-	createInfo.clipped = true;
-	createInfo.oldSwapchain = VK_NULL_HANDLE;
-
-	if (vkCreateSwapchainKHR(*pDevice->GetDevice(), 
-		&createInfo, nullptr, &swapchain))
+	if (vkCreateSwapchainKHR(pDevice->Get(), 
+		createInfo, nullptr, &swapchain))
 		return false;
 	
 	initialized = true;
@@ -118,43 +62,45 @@ uint32_t Swapchain::GetImageCount()
 	return imageCount;
 }
 
-std::vector<Ref<Image>> Swapchain::GetImages()
+std::vector<VkImage> Swapchain::GetImages()
 {
 	uint32_t numImages;
-	vkGetSwapchainImagesKHR(*pDevice->GetDevice(), swapchain, &numImages,
+	vkGetSwapchainImagesKHR(pDevice->Get(), swapchain, &numImages,
 		nullptr);
 	
 	std::vector<VkImage> swapchainImages(numImages);
-	vkGetSwapchainImagesKHR(*pDevice->GetDevice(), swapchain, &numImages,
+	vkGetSwapchainImagesKHR(pDevice->Get(), swapchain, &numImages,
 		swapchainImages.data());
 
-	std::vector<Ref<Image>> vkHelloImages;
-	for (VkImage image : swapchainImages)
-		vkHelloImages.push_back(RefTools::Create<Image>(&image));
-	
-	return vkHelloImages;
+	return swapchainImages;
 }
 
-bool Swapchain::GetImageViews(std::vector<Ref<ImageView>>* pVec)
+bool Swapchain::GetImageViews(std::vector<VkImageView>* pVec)
 {
-	std::vector<Ref<Image>> images = GetImages();
+	std::vector<VkImage> images = GetImages();
 
 	pVec->resize(images.size());
 	for (uint64_t i = 0; i < images.size(); i++)
 	{
-		Ref<Image> image = images[i];
+		VkImage image = images[i];
 
-		ImageViewDescriptor desc;
-		desc.format = imageFormat;
-		desc.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		desc.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		desc.subresourceRange.baseMipLevel = 0;
-		desc.subresourceRange.levelCount = 1;
-		desc.subresourceRange.baseArrayLayer = 0;
-		desc.subresourceRange.layerCount = 1;
-
-		pVec->at(i) = RefTools::Create<ImageView>();
-		if (!pVec->at(i)->Init(pDevice, image.get(), &desc))
+		VkImageViewCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		createInfo.image = image;
+		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.format = imageFormat;
+		createInfo.components.r = VK_COMPONENT_SWIZZLE_R;
+		createInfo.components.g = VK_COMPONENT_SWIZZLE_G;
+		createInfo.components.b = VK_COMPONENT_SWIZZLE_B;
+		createInfo.components.a = VK_COMPONENT_SWIZZLE_A;
+		createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		createInfo.subresourceRange.baseMipLevel = 0;
+		createInfo.subresourceRange.levelCount = 1;
+		createInfo.subresourceRange.baseArrayLayer = 0;
+		createInfo.subresourceRange.layerCount = 1;
+		
+		if (vkCreateImageView(pDevice->Get(), &createInfo, nullptr,
+			&pVec->at(i)) != VK_SUCCESS)
 			return false;
 	}
 
@@ -181,14 +127,14 @@ uint64_t Swapchain::GetHeight()
 	return height;
 }
 
-VkSwapchainKHR* Swapchain::GetSwapchain()
+VkSwapchainKHR Swapchain::Get()
 {
-	return &swapchain;
+	return swapchain;
 }
 
 void Swapchain::OnDispose()
 {
-	vkDestroySwapchainKHR(*pDevice->GetDevice(), swapchain, nullptr);
+	vkDestroySwapchainKHR(pDevice->Get(), swapchain, nullptr);
 }
 
 VkPresentModeKHR Swapchain::ChoosePresentMode(

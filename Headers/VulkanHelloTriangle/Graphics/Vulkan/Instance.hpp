@@ -44,19 +44,12 @@ namespace Vulkan
 			bool debugMode = false
 		);
 
-		/**
-		 * @brief Built in pick device function.
-		 * 
-		 * @param pDevice A pointer to a device to set.
-		 * 
-		 * @returns The device picked. 
-		 */
-		bool PickDevice(VkPhysicalDevice* pDevice, Surface* pSurface);
-
 		QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device,
 			Surface* pSurface);
 		SwapchainDetails QuerySwapchainSupport(VkPhysicalDevice device, 
 			Surface* pSurface);
+		bool CheckDeviceExtentionSupport(VkPhysicalDevice device, 
+			const char*const * deviceExtentions, uint64_t extentionCount);
 		
 		/**
 		 * @brief Adds a debug messenger.
@@ -71,7 +64,7 @@ namespace Vulkan
 		 */
 		void RemoveDebugMessenger(DebugCallback* messenger);
 
-		VkInstance* GetInstance();
+		VkInstance Get();
 		std::vector<VkExtensionProperties> GetAvailableExtentions();
 
 		void DispatchDebugMessage(
@@ -86,16 +79,9 @@ namespace Vulkan
 		const std::vector<const char*> validationLayers = {
 			"VK_LAYER_KHRONOS_validation"
 		};
-
-		const std::vector<const char*> deviceExtensions = {
-			VK_KHR_SWAPCHAIN_EXTENSION_NAME
-		};
 	protected:
 		void OnDispose();
 	private:
-		bool IsDeviceSuitable(VkPhysicalDevice device, Surface* pSurface);
-		bool CheckDeviceExtentionSupport(VkPhysicalDevice device);
-
 		bool CheckValidationLayerSupport(std::vector<const char*> layers);
 		std::vector<const char*> GetRequiredExtentions(bool debugMode);
 

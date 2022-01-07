@@ -73,7 +73,7 @@ namespace Vulkan
         );
     #endif
 
-        VkShaderModule* GetModule();
+        VkShaderModule Get();
     protected:
         void OnDispose();
     private:
