@@ -333,9 +333,27 @@ bool InitSwapchain()
 	createInfo.clipped = true;
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-    createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    if (indices.graphicsFamilyIndex != indices.presentFamilyIndex)
+    {
+        if (!indices.hasPresentFamily)
+			return false;
+			
+		uint32_t queueFamilyIndices[] = 
+		{
+			indices.graphicsFamilyIndex, 
+			indices.presentFamilyIndex
+		};
+
+		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+		createInfo.queueFamilyIndexCount = 2;
+		createInfo.pQueueFamilyIndices = queueFamilyIndices;
+    }
+    else
+    {
+        createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		createInfo.queueFamilyIndexCount = 0;
 		createInfo.pQueueFamilyIndices = nullptr;
+    }
     
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
