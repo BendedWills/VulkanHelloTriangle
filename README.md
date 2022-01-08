@@ -9,23 +9,10 @@ The result of this program should look something like this. Feel free to copy an
 
 ![Vulkan hello triangle](https://github.com/BendedWills/VulkanHelloTriangle/blob/main/triangle.png?raw=true)
 
-# Linux dependencies
-Ubuntu:
-* vulkan-tools (optional)
-* libvulkan-dev or vulkan-loader-devel
-* vulkan-validationlayers-dev
-* spirv-tools
-* libglfw3-dev
-
-Arch:
-* vulkan-icd-loader
-* nvidia-utils for nvidia GPUs, vulkan-intel for intel GPUs and vulkan-radeon for AMD GPUs
-* vulkan-headers
-* vulkan-tools (optional)
-* vulkan-validation-layers
-
-Other:
+# Dependencies
 * glslang
+* vulkan (of course)
+* glfw
 
 # Linux build instructions
 If you are on linux and want to build this project, you've come to the right place.
@@ -40,7 +27,11 @@ or
 
 But if you want to build the project without using the shell script, here is how:
 
-First, run CMake to generate the Makefile like so: 
+First, run the GenerateResources.sh script to convert assets into object files:
+
+	./GenerateResources.sh
+
+Then, CMake to generate the Makefile like so: 
 
 	cmake -S . -B Build
 
