@@ -99,7 +99,7 @@ static bool RecreateSwapchain(uint64_t width, uint64_t height);
 
 static void ResizeCallback(GLFWwindow* window, int width, int height)
 {
-    if (!RecreateSwapchain((uint64_t)width, (uint64_t)height))
+    if (!RecreateSwapchain(width, height))
     {
         std::cout << "Failed to recreate swapchain!" << std::endl;
         exit(EXIT_FAILURE);
@@ -363,7 +363,7 @@ static bool InitSwapchain(uint64_t width, uint64_t height)
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	createInfo.preTransform = details.capabilities.currentTransform;
 	createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	createInfo.presentMode = swapchain.ChoosePresentMode(details.presentModes);
+	createInfo.presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
 	createInfo.clipped = true;
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
@@ -733,10 +733,12 @@ static bool DrawFrame()
         UINT64_MAX);
     
     uint32_t imageIndex;
-    if (vkAcquireNextImageKHR(device.Get(), swapchain.Get(), UINT64_MAX, 
-        imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex)
-        != VK_SUCCESS)
-        return true;
+    VkResult result = vkAcquireNextImageKHR(device.Get(), 
+        swapchain.Get(), UINT64_MAX, imageAvailableSemaphores[currentFrame], 
+        VK_NULL_HANDLE, &imageIndex);
+    if (result != VK_SUCCESS)
+        return result == VK_SUBOPTIMAL_KHR 
+            || result == VK_ERROR_OUT_OF_DATE_KHR;
     
     if (imagesInFlight[imageIndex] != VK_NULL_HANDLE)
         vkWaitForFences(device.Get(), 1, &imagesInFlight[imageIndex], VK_TRUE,
@@ -782,15 +784,22 @@ static bool DrawFrame()
 
 static bool RecreateSwapchain(uint64_t width, uint64_t height)
 {
-    device.WaitIdle();
+    if (width == 0 || height == 0)
+        return true;
     
+    device.WaitIdle();
+
     DisposeSwapchain();
-    return InitSwapchain(width, height)
-        && InitRenderPass()
-        && InitShaders()
-        && InitPipeline()
-        && InitFramebuffers()
-        && InitCommandBuffers();
+    if (!InitSwapchain(width, height)
+        || !InitRenderPass()
+        || !InitShaders()
+        || !InitPipeline()
+        || !InitFramebuffers()
+        || !InitCommandBuffers())
+        return false;
+
+    imagesInFlight.resize(swapchainImages.size(), VK_NULL_HANDLE);
+    return true;
 }
 
 static void DisposeSwapchain()

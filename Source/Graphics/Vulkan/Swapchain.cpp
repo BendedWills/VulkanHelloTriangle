@@ -1,5 +1,6 @@
 #include <VulkanHelloTriangle/Graphics/Vulkan/Swapchain.hpp>
 
+#include <algorithm>
 #include <cmath>
 
 using namespace Vulkan;
