@@ -7,7 +7,6 @@ using namespace Vulkan;
 bool Swapchain::Init(
 	Surface* pSurface,
 	Device* pDevice,
-	uint64_t width, uint64_t height,
 	SwapchainDetails details,
 	VkSwapchainCreateInfoKHR* createInfo
 )
@@ -17,8 +16,6 @@ bool Swapchain::Init(
 	
 	this->pDevice = pDevice;
 	this->imageFormat = createInfo->imageFormat;
-	this->width = width;
-	this->height = height;
 	this->extent = createInfo->imageExtent;
 	this->imageCount = createInfo->minImageCount;
 	
@@ -98,16 +95,6 @@ VkExtent2D Swapchain::GetExtent()
 VkFormat Swapchain::GetImageFormat()
 {
 	return imageFormat;
-}
-
-uint64_t Swapchain::GetWidth()
-{
-	return width;
-}
-
-uint64_t Swapchain::GetHeight()
-{
-	return height;
 }
 
 VkSwapchainKHR Swapchain::Get()

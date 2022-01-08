@@ -81,20 +81,32 @@ static uint64_t currentFrame = 0;
 static constexpr const uint64_t width = 1280;
 static constexpr const uint64_t height = 720;
 
-bool InitWindow();
-bool InitVulkan();
-bool PickDevice(VkPhysicalDevice* pDevice, Vulkan::Surface* pSurface);
-bool IsDeviceSuitable(VkPhysicalDevice device, Vulkan::Surface* pSurface);
-bool InitDevice();
-bool InitSwapchain();
-bool InitShaders();
-bool InitRenderPass();
-bool InitPipeline();
-bool InitFramebuffers();
-bool InitCommandPool();
-bool InitSyncObjects();
+static bool InitWindow();
+static bool InitVulkan();
+static bool PickDevice(VkPhysicalDevice* pDevice, Vulkan::Surface* pSurface);
+static bool IsDeviceSuitable(VkPhysicalDevice device, Vulkan::Surface* pSurface);
+static bool InitDevice();
+static bool InitSwapchain(uint64_t width, uint64_t height);
+static bool InitShaders();
+static bool InitRenderPass();
+static bool InitPipeline();
+static bool InitFramebuffers();
+static bool InitCommandPool();
+static bool InitCommandBuffers();
+static bool InitSyncObjects();
+static void DisposeSwapchain();
+static bool RecreateSwapchain(uint64_t width, uint64_t height);
 
-bool Init()
+static void ResizeCallback(GLFWwindow* window, int width, int height)
+{
+    if (!RecreateSwapchain((uint64_t)width, (uint64_t)height))
+    {
+        std::cout << "Failed to recreate swapchain!" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+static bool Init()
 {
     if (!glfwInit())
     {
@@ -119,7 +131,7 @@ bool Init()
     return true;
 }
 
-bool InitWindow()
+static bool InitWindow()
 {
     if (!glfwInit())
     {
@@ -135,10 +147,12 @@ bool InitWindow()
     if (!window)
         return false;
     
+    glfwSetFramebufferSizeCallback(window, ResizeCallback);
+    
     return true;
 }
 
-bool InitVulkan()
+static bool InitVulkan()
 {
     glslang::InitializeProcess();
 
@@ -166,7 +180,7 @@ bool InitVulkan()
         return false;
     }
 
-    if (!InitSwapchain())
+    if (!InitSwapchain(width, height))
     {
         std::cout << "Failed to initialize swapchain!" << std::endl;
         return false;
@@ -202,6 +216,12 @@ bool InitVulkan()
         return false;
     }
 
+    if (!InitCommandBuffers())
+    {
+        std::cout << "Failed to initialize command buffers!" << std::endl;
+        return false;
+    }
+
     if (!InitSyncObjects())
     {
         std::cout << "Failed to initialize sync objects!" << std::endl;
@@ -211,7 +231,7 @@ bool InitVulkan()
     return true;
 }
 
-bool PickDevice(VkPhysicalDevice* pDevice, Vulkan::Surface* pSurface)
+static bool PickDevice(VkPhysicalDevice* pDevice, Vulkan::Surface* pSurface)
 {
     uint32_t deviceCount = 0;
 	vkEnumeratePhysicalDevices(vulkan.Get(), &deviceCount, nullptr);
@@ -232,7 +252,7 @@ bool PickDevice(VkPhysicalDevice* pDevice, Vulkan::Surface* pSurface)
 	return false;
 }
 
-bool IsDeviceSuitable(VkPhysicalDevice device, Vulkan::Surface* pSurface)
+static bool IsDeviceSuitable(VkPhysicalDevice device, Vulkan::Surface* pSurface)
 {
 	VkPhysicalDeviceProperties deviceProperties;
 	VkPhysicalDeviceFeatures deviceFeatures;
@@ -263,7 +283,7 @@ bool IsDeviceSuitable(VkPhysicalDevice device, Vulkan::Surface* pSurface)
 		&& extentionsSupported;
 }
 
-bool InitDevice()
+static bool InitDevice()
 {
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     std::set<uint32_t> uniqueQueueFamilies = {
@@ -302,7 +322,7 @@ bool InitDevice()
     return true;
 }
 
-VkSurfaceFormatKHR ChooseSurfaceFormat(Vulkan::SwapchainDetails details) 
+static VkSurfaceFormatKHR ChooseSurfaceFormat(Vulkan::SwapchainDetails details) 
 {
     for (const auto& availableFormat : details.formats)
         if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB 
@@ -312,7 +332,7 @@ VkSurfaceFormatKHR ChooseSurfaceFormat(Vulkan::SwapchainDetails details)
     return details.formats[0];
 }
 
-bool InitSwapchain()
+static bool InitSwapchain(uint64_t width, uint64_t height)
 {
     Vulkan::SwapchainDetails details = 
         vulkan.QuerySwapchainSupport(physicalDevice, &surface);
@@ -366,10 +386,7 @@ bool InitSwapchain()
     else
         createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-
-    if (!swapchain.Init(&surface, &device, width, height, details, 
+    if (!swapchain.Init(&surface, &device, details, 
         &createInfo))
         return false;
     
@@ -380,7 +397,7 @@ bool InitSwapchain()
     return true;
 }
 
-bool InitShaders()
+static bool InitShaders()
 {
     vertexModule.Init(&device);
     fragmentModule.Init(&device);
@@ -424,7 +441,7 @@ bool InitShaders()
     return true;
 }
 
-bool InitRenderPass()
+static bool InitRenderPass()
 {
     VkAttachmentDescription colorAttachment{};
     colorAttachment.format = swapchain.GetImageFormat();
@@ -469,7 +486,7 @@ bool InitRenderPass()
     return true;
 }
 
-bool InitPipeline()
+static bool InitPipeline()
 {
     VkPipelineLayoutCreateInfo pipelineLayoutDesc{};
     pipelineLayoutDesc.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -594,7 +611,7 @@ bool InitPipeline()
     return true;
 }
 
-bool InitFramebuffers()
+static bool InitFramebuffers()
 {
     VkExtent2D swapchainExtent = swapchain.GetExtent();
     uint64_t imageViewCount = swapchainImageViews.size();
@@ -620,18 +637,20 @@ bool InitFramebuffers()
     return true;
 }
 
-bool InitCommandPool()
+static bool InitCommandPool()
 {
-    VkExtent2D swapchainExtent = swapchain.GetExtent();
-
     VkCommandPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolInfo.queueFamilyIndex = indices.graphicsFamilyIndex;
     
-    if (vkCreateCommandPool(device.Get(), &poolInfo, nullptr, &commandPool)
-        != VK_SUCCESS)
-        return false;
-    
+    return vkCreateCommandPool(device.Get(), &poolInfo, nullptr, &commandPool)
+        == VK_SUCCESS;
+}
+
+static bool InitCommandBuffers()
+{
+    VkExtent2D swapchainExtent = swapchain.GetExtent();
+
     commandBuffers.resize(framebuffers.size());
 
     VkCommandBufferAllocateInfo allocInfo{};
@@ -678,7 +697,7 @@ bool InitCommandPool()
     return true;
 }
 
-bool InitSyncObjects()
+static bool InitSyncObjects()
 {
     imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -708,7 +727,7 @@ bool InitSyncObjects()
     return true;
 }
 
-bool DrawFrame()
+static bool DrawFrame()
 {
     vkWaitForFences(device.Get(), 1, &inFlightFences[currentFrame], VK_TRUE, 
         UINT64_MAX);
@@ -717,7 +736,7 @@ bool DrawFrame()
     if (vkAcquireNextImageKHR(device.Get(), swapchain.Get(), UINT64_MAX, 
         imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex)
         != VK_SUCCESS)
-        return false; // Returning false for now until swapchain recreation is implemented.
+        return true;
     
     if (imagesInFlight[imageIndex] != VK_NULL_HANDLE)
         vkWaitForFences(device.Get(), 1, &imagesInFlight[imageIndex], VK_TRUE,
@@ -755,14 +774,47 @@ bool DrawFrame()
 
     if (vkQueuePresentKHR(presentQueue, &presentInfo) 
         != VK_SUCCESS)
-        return false;
+        return true;
     
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     return true;
 }
 
-void Dispose()
+static bool RecreateSwapchain(uint64_t width, uint64_t height)
 {
+    device.WaitIdle();
+    
+    DisposeSwapchain();
+    return InitSwapchain(width, height)
+        && InitRenderPass()
+        && InitShaders()
+        && InitPipeline()
+        && InitFramebuffers()
+        && InitCommandBuffers();
+}
+
+static void DisposeSwapchain()
+{
+    for (VkFramebuffer framebuffer : framebuffers)
+        vkDestroyFramebuffer(device.Get(), framebuffer, nullptr);
+    
+    vkFreeCommandBuffers(device.Get(), commandPool, commandBuffers.size(), 
+        commandBuffers.data());
+    
+    vkDestroyPipeline(device.Get(), pipeline, nullptr);
+    vkDestroyPipelineLayout(device.Get(), pipelineLayout, nullptr);
+    vkDestroyRenderPass(device.Get(), renderPass, nullptr);
+
+    for (VkImageView imageView : swapchainImageViews)
+        vkDestroyImageView(device.Get(), imageView, nullptr);
+
+    swapchain.Dispose();
+}
+
+static void Dispose()
+{
+    DisposeSwapchain();
+
     for (uint64_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         vkDestroySemaphore(device.Get(), renderFinishedSemaphores[i], nullptr);
@@ -772,23 +824,13 @@ void Dispose()
 
     vkDestroyCommandPool(device.Get(), commandPool, nullptr);
 
-    for (VkFramebuffer framebuffer : framebuffers)
-        vkDestroyFramebuffer(device.Get(), framebuffer, nullptr);
-
-    vkDestroyPipeline(device.Get(), pipeline, nullptr);
-    vkDestroyPipelineLayout(device.Get(), pipelineLayout, nullptr);
-    vkDestroyRenderPass(device.Get(), renderPass, nullptr);
-
-    for (VkImageView imageView : swapchainImageViews)
-        vkDestroyImageView(device.Get(), imageView, nullptr);
-
-    swapchain.Dispose();
     device.Dispose();
     surface.Dispose();
     vulkan.Dispose();
 
     glfwDestroyWindow(window);
     glfwTerminate();
+
     glslang::FinalizeProcess();
 }
 

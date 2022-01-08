@@ -38,7 +38,6 @@ namespace Vulkan
         bool Init(
             Surface* pSurface,
             Device* pDevice,
-            uint64_t width, uint64_t height,
             SwapchainDetails details,
             VkSwapchainCreateInfoKHR* createInfo
         );
@@ -67,9 +66,7 @@ namespace Vulkan
 
         VkExtent2D GetExtent();
         VkFormat GetImageFormat();
-        uint64_t GetWidth();
-        uint64_t GetHeight();
-
+        
         VkSwapchainKHR Get();
     protected:
         void OnDispose();
@@ -79,8 +76,6 @@ namespace Vulkan
 
         VkExtent2D extent;
         VkFormat imageFormat;
-
-        uint64_t width = 0, height = 0;
 
         Device* pDevice = nullptr;
     };
