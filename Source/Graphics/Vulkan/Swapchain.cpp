@@ -20,25 +20,8 @@ bool Swapchain::Init(
 	this->width = width;
 	this->height = height;
 	this->extent = createInfo->imageExtent;
+	this->imageCount = createInfo->minImageCount;
 	
-	// I don't know how else to explain this so I'm just going to quote this
-	// from vulkan-tutorial.com:
-	// "
-	// However, simply sticking to this minimum means that we may 
-	// sometimes have to wait on the driver to complete internal operations 
-	// before we can acquire another image to render to. 
-	// Therefore it is recommended to request at least one more image than 
-	// the minimum:
-	// "
-	imageCount = details.capabilities.minImageCount + 1;
-
-	// Adding to the image count may have it go over the maximum
-	// so here I'm checking if it does, and if so, setting the image count to
-	// its maximum value.
-	uint32_t max = details.capabilities.maxImageCount;
-	if (max > 0 && imageCount > max)
-		imageCount = max;
-
 	if (vkCreateSwapchainKHR(pDevice->Get(), 
 		createInfo, nullptr, &swapchain))
 		return false;
@@ -89,10 +72,10 @@ bool Swapchain::GetImageViews(std::vector<VkImageView>* pVec)
 		createInfo.image = image;
 		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		createInfo.format = imageFormat;
-		createInfo.components.r = VK_COMPONENT_SWIZZLE_R;
-		createInfo.components.g = VK_COMPONENT_SWIZZLE_G;
-		createInfo.components.b = VK_COMPONENT_SWIZZLE_B;
-		createInfo.components.a = VK_COMPONENT_SWIZZLE_A;
+		createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 		createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		createInfo.subresourceRange.baseMipLevel = 0;
 		createInfo.subresourceRange.levelCount = 1;

@@ -69,6 +69,7 @@ static std::vector<VkSemaphore> renderFinishedSemaphores;
 static std::vector<VkFence> inFlightFences;
 static std::vector<VkFence> imagesInFlight;
 static std::vector<VkFramebuffer> framebuffers;
+static std::vector<VkImage> swapchainImages;
 static std::vector<VkImageView> swapchainImageViews;
 static std::vector<VkCommandBuffer> commandBuffers;
 
@@ -138,9 +139,10 @@ bool InitVulkan()
 {
     glslang::InitializeProcess();
 
-    vulkan.AddDebugMessenger(&callback);
     if (!vulkan.Init("VulkanHelloTriangle", "uhh", true))
         return false;
+    vulkan.AddDebugMessenger(&callback);
+
     if (!surface.Init(&vulkan, window))
         return false;
     
@@ -160,16 +162,16 @@ bool InitVulkan()
         std::cout << "Failed to initialize swapchain!" << std::endl;
         return false;
     }
-    
-    if (!InitShaders())
-    {
-        std::cout << "Failed to initialize shaders!" << std::endl;
-        return false;
-    }
 
     if (!InitRenderPass())
     {
         std::cout << "Failed to initialize render pass!" << std::endl;
+        return false;
+    }
+
+    if (!InitShaders())
+    {
+        std::cout << "Failed to initialize shaders!" << std::endl;
         return false;
     }
 
@@ -307,10 +309,15 @@ bool InitSwapchain()
         vulkan.QuerySwapchainSupport(physicalDevice, &surface);
     VkSurfaceFormatKHR surfaceFormat = ChooseSurfaceFormat(details);
 
+    uint32_t imageCount = details.capabilities.minImageCount + 1;
+    if (details.capabilities.maxImageCount > 0 && 
+        imageCount > details.capabilities.maxImageCount)
+        imageCount = details.capabilities.maxImageCount;
+
     VkSwapchainCreateInfoKHR createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	createInfo.surface = surface.Get();
-	createInfo.minImageCount = details.capabilities.minImageCount + 1;
+	createInfo.minImageCount = imageCount;
 	createInfo.imageFormat = surfaceFormat.format;
 	createInfo.imageColorSpace = surfaceFormat.colorSpace;
 	createInfo.imageExtent = swapchain.ChooseExtent(details.capabilities, 
@@ -325,14 +332,13 @@ bool InitSwapchain()
 	// as this is only the color attachment. There are others too, such as
 	// the depth buffer.
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-	createInfo.queueFamilyIndexCount = 0;
-	createInfo.pQueueFamilyIndices = nullptr;
 	createInfo.preTransform = details.capabilities.currentTransform;
 	createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	createInfo.presentMode = swapchain.ChoosePresentMode(details.presentModes);
 	createInfo.clipped = true;
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
+    indices = vulkan.FindQueueFamilies(physicalDevice, &surface);
     if (indices.graphicsFamilyIndex != indices.presentFamilyIndex)
     {
         if (!indices.hasPresentFamily)
@@ -349,11 +355,7 @@ bool InitSwapchain()
 		createInfo.pQueueFamilyIndices = queueFamilyIndices;
     }
     else
-    {
         createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		createInfo.queueFamilyIndexCount = 0;
-		createInfo.pQueueFamilyIndices = nullptr;
-    }
     
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
@@ -362,6 +364,7 @@ bool InitSwapchain()
         &createInfo))
         return false;
     
+    swapchainImages = swapchain.GetImages();
     if (!swapchain.GetImageViews(&swapchainImageViews))
         return false;
     
@@ -462,10 +465,8 @@ bool InitPipeline()
     VkPipelineLayoutCreateInfo pipelineLayoutDesc{};
     pipelineLayoutDesc.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutDesc.setLayoutCount = 0; 
-    pipelineLayoutDesc.pSetLayouts = nullptr; 
     pipelineLayoutDesc.pushConstantRangeCount = 0; 
-    pipelineLayoutDesc.pPushConstantRanges = nullptr; 
-
+    
     if (vkCreatePipelineLayout(device.Get(), &pipelineLayoutDesc, 
         nullptr, &pipelineLayout) != VK_SUCCESS)
         return false;
@@ -473,10 +474,8 @@ bool InitPipeline()
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.vertexBindingDescriptionCount = 0;
-    vertexInputInfo.pVertexBindingDescriptions = nullptr; 
     vertexInputInfo.vertexAttributeDescriptionCount = 0;
-    vertexInputInfo.pVertexAttributeDescriptions = nullptr; 
-
+    
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -514,15 +513,12 @@ bool InitPipeline()
     rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
     rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
-    rasterizer.depthBiasConstantFactor = 0.0f; 
-    rasterizer.depthBiasClamp = 0.0f; 
-    rasterizer.depthBiasSlopeFactor = 0.0f; 
-
+    
     VkPipelineMultisampleStateCreateInfo multisampleState{};
     multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampleState.sampleShadingEnable = VK_FALSE;
     multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    multisampleState.minSampleShading = 1.0f; 
+    multisampleState.minSampleShading = 0.0f; 
     multisampleState.pSampleMask = nullptr; 
     multisampleState.alphaToCoverageEnable = VK_FALSE; 
     multisampleState.alphaToOneEnable = VK_FALSE; 
@@ -530,10 +526,10 @@ bool InitPipeline()
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     colorBlendAttachment.blendEnable = VK_FALSE;
-    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; 
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ZERO; 
     colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; 
     colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; 
-    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; 
+    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; 
     colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; 
     colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; 
 
@@ -573,12 +569,11 @@ bool InitPipeline()
     pipelineDesc.pViewportState = &viewportState;
     pipelineDesc.pRasterizationState = &rasterizer;
     pipelineDesc.pMultisampleState = &multisampleState;
-    pipelineDesc.pDepthStencilState = nullptr; 
     pipelineDesc.pColorBlendState = &colorBlending;
-    pipelineDesc.pDynamicState = nullptr; 
     pipelineDesc.layout = pipelineLayout;
     pipelineDesc.renderPass = renderPass;
     pipelineDesc.subpass = 0;
+    pipelineDesc.basePipelineHandle = VK_NULL_HANDLE;
 
     if (vkCreateGraphicsPipelines(device.Get(), VK_NULL_HANDLE,
         1, &pipelineDesc, nullptr, &pipeline) != VK_SUCCESS)
@@ -593,7 +588,6 @@ bool InitPipeline()
 bool InitFramebuffers()
 {
     VkExtent2D swapchainExtent = swapchain.GetExtent();
-
     uint64_t imageViewCount = swapchainImageViews.size();
     
     framebuffers.resize(imageViewCount);
@@ -661,12 +655,13 @@ bool InitCommandPool()
 
         vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, 
             VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, 
-            pipeline);
-        vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
-
+        {
+            vkCmdBindPipeline(commandBuffers[i], 
+                VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+            vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+        }
         vkCmdEndRenderPass(commandBuffers[i]);
-
+        
         if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
             return false;
     }
@@ -679,7 +674,7 @@ bool InitSyncObjects()
     imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
     inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-    imagesInFlight.resize(swapchainImageViews.size(), VK_NULL_HANDLE);
+    imagesInFlight.resize(swapchainImages.size(), VK_NULL_HANDLE);
 
     VkSemaphoreCreateInfo semaphoreInfo{};
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -734,7 +729,7 @@ bool DrawFrame()
     submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
-
+    
     vkResetFences(device.Get(), 1, &inFlightFences[currentFrame]);
     if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, 
         inFlightFences[currentFrame]) != VK_SUCCESS)
@@ -748,7 +743,7 @@ bool DrawFrame()
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = swapchains;
     presentInfo.pImageIndices = &imageIndex;
-    
+
     if (vkQueuePresentKHR(presentQueue, &presentInfo) 
         != VK_SUCCESS)
         return false;

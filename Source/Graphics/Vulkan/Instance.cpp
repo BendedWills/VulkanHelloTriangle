@@ -154,7 +154,7 @@ Vulkan::QueueFamilyIndices Instance::FindQueueFamilies(
 	uint32_t familyCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &familyCount, nullptr);
 
-	if (familyCount == 0)
+	if (familyCount == 0 || !pSurface)
 		return queueFamilies;
 
 	std::vector<VkQueueFamilyProperties> families(familyCount);
@@ -170,17 +170,17 @@ Vulkan::QueueFamilyIndices Instance::FindQueueFamilies(
 			queueFamilies.graphicsFamilyIndex = i;
 		}
 
-		if (pSurface)
+		VkBool32 presentSupport = false;
+		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, 
+			pSurface->Get(), &presentSupport);
+		if (presentSupport)
 		{
-			VkBool32 presentSupport = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, 
-				pSurface->Get(), &presentSupport);
-			if (presentSupport)
-			{
-				queueFamilies.hasPresentFamily = true;
-				queueFamilies.presentFamilyIndex = i;
-			}
+			queueFamilies.hasPresentFamily = true;
+			queueFamilies.presentFamilyIndex = i;
 		}
+
+		if (queueFamilies.hasGraphicsFamily && queueFamilies.hasPresentFamily)
+			break;
 		
 		i++;
 	}
