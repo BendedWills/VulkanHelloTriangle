@@ -1,6 +1,12 @@
 cmake_minimum_required (VERSION 3.8)
 project ("VulkanHelloTriangle")
 
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+    add_definitions(-DDEBUG_ENABLED)
+endif()
+
 file(GLOB_RECURSE SOURCES 
     "Source/*.cpp" 
     "Source/*.c"

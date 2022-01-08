@@ -114,6 +114,8 @@ bool Init()
         return false;
     }
 
+    glfwShowWindow(window);
+
     return true;
 }
 
@@ -127,6 +129,7 @@ bool InitWindow()
 
     // The GLFW_CLIENT_API hint in short tells GLFW to not use OpenGL.
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_VISIBLE, false);
     window = glfwCreateWindow(width, height, "Vulkan Hello Triangle", nullptr, 
         nullptr);
     if (!window)
@@ -139,7 +142,13 @@ bool InitVulkan()
 {
     glslang::InitializeProcess();
 
-    if (!vulkan.Init("VulkanHelloTriangle", "uhh", true))
+#ifdef DEBUG_ENABLED
+    bool enableValidationLayers = true;
+#else
+    bool enableValidationLayers = false;
+#endif
+
+    if (!vulkan.Init("VulkanHelloTriangle", "uhh", enableValidationLayers))
         return false;
     vulkan.AddDebugMessenger(&callback);
 
