@@ -39,6 +39,39 @@ public:
     }
 };
 
+struct Vertex
+{
+    float position[2];
+    float color[3];
+
+    static VkVertexInputBindingDescription GetBindingDescription()
+    {
+        VkVertexInputBindingDescription bindingDescription{};
+        bindingDescription.binding = 0;
+        bindingDescription.stride = sizeof(Vertex);
+        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+        return bindingDescription;
+    }
+
+    static std::array<VkVertexInputAttributeDescription, 2> GetAttributeDescriptions()
+    {
+        std::array<VkVertexInputAttributeDescription, 2> attributeDescs{};
+        // Position
+        attributeDescs[0].location = 0;
+        attributeDescs[0].binding = 0;
+        attributeDescs[0].format = VK_FORMAT_R32G32_SFLOAT;
+        attributeDescs[0].offset = offsetof(Vertex, position);
+        // Color
+        attributeDescs[1].location = 1;
+        attributeDescs[1].binding = 0;
+        attributeDescs[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescs[1].offset = offsetof(Vertex, color);
+
+        return attributeDescs;
+    }
+};
+
 static const std::vector<const char*> deviceExtensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
@@ -56,6 +89,8 @@ static VkPipelineLayout pipelineLayout;
 static VkRenderPass renderPass;
 static VkPipeline pipeline;
 static VkCommandPool commandPool;
+static VkBuffer vertexBuffer;
+static VkDeviceMemory vertexBufferMemory;
 
 static Vulkan::QueueFamilyIndices indices;
 static VkPhysicalDevice physicalDevice;
@@ -92,10 +127,13 @@ static bool InitRenderPass();
 static bool InitPipeline();
 static bool InitFramebuffers();
 static bool InitCommandPool();
+static bool InitVertexBuffers();
 static bool InitCommandBuffers();
 static bool InitSyncObjects();
 static void DisposeSwapchain();
 static bool RecreateSwapchain(uint64_t width, uint64_t height);
+
+static bool FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, uint32_t* pMemoryType);
 
 static void ResizeCallback(GLFWwindow* window, int width, int height)
 {
@@ -213,6 +251,12 @@ static bool InitVulkan()
     if (!InitCommandPool())
     {
         std::cout << "Failed to initialize command pool!" << std::endl;
+        return false;
+    }
+
+    if (!InitVertexBuffers())
+    {
+        std::cout << "Failed to initialize vertex buffers!" << std::endl;
         return false;
     }
 
@@ -363,7 +407,7 @@ static bool InitSwapchain(uint64_t width, uint64_t height)
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	createInfo.preTransform = details.capabilities.currentTransform;
 	createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	createInfo.presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+	createInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
 	createInfo.clipped = true;
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
@@ -496,11 +540,16 @@ static bool InitPipeline()
     if (vkCreatePipelineLayout(device.Get(), &pipelineLayoutDesc, 
         nullptr, &pipelineLayout) != VK_SUCCESS)
         return false;
+
+    auto bindingDescription = Vertex::GetBindingDescription();
+    auto attributeDescriptions = Vertex::GetAttributeDescriptions();
     
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 0;
-    vertexInputInfo.vertexAttributeDescriptionCount = 0;
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+    vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptions.size();
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
     
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -647,6 +696,61 @@ static bool InitCommandPool()
         == VK_SUCCESS;
 }
 
+static bool InitVertexBuffers()
+{
+    Vertex vertices[] = 
+    {
+          // Position       // Color
+        { {  0.0f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
+        { {  0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f } },
+        { { -0.5f,  0.5f }, { 0.0f, 0.0f, 1.0f } }
+    };
+    uint64_t vertexCount = sizeof(vertices) / sizeof(vertices[0]);
+
+    VkBufferCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    createInfo.size = sizeof(vertices[0]) * vertexCount;
+    createInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    if (vkCreateBuffer(device.Get(), &createInfo, nullptr, &vertexBuffer)
+        != VK_SUCCESS)
+        return false;
+    
+    VkMemoryRequirements memoryRequirements;
+    vkGetBufferMemoryRequirements(device.Get(), vertexBuffer, &memoryRequirements);
+
+    uint32_t memoryType;
+    if (!FindMemoryType(memoryRequirements.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        &memoryType))
+    {
+        std::cout << "Failed to find suitable memory type!" << std::endl;
+        return false;
+    }
+
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memoryRequirements.size;
+    allocInfo.memoryTypeIndex = memoryType;
+    
+    if (vkAllocateMemory(device.Get(), &allocInfo, nullptr, &vertexBufferMemory)
+        != VK_SUCCESS)
+    {
+        std::cout << "Failed to allocate vertex buffer memory!" << std::endl;
+        return false;
+    }
+
+    vkBindBufferMemory(device.Get(), vertexBuffer, vertexBufferMemory, 0);
+
+    void* data;
+    vkMapMemory(device.Get(), vertexBufferMemory, 0, createInfo.size, 0, &data);
+        memcpy(data, vertices, sizeof(vertices));
+    vkUnmapMemory(device.Get(), vertexBufferMemory);
+    
+    return true;
+}
+
 static bool InitCommandBuffers()
 {
     VkExtent2D swapchainExtent = swapchain.GetExtent();
@@ -686,6 +790,11 @@ static bool InitCommandBuffers()
         {
             vkCmdBindPipeline(commandBuffers[i], 
                 VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+            VkBuffer vertexBuffers[] = { vertexBuffer };
+            VkDeviceSize offsets[] = { 0 };
+            vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+            
             vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
         }
         vkCmdEndRenderPass(commandBuffers[i]);
@@ -824,6 +933,9 @@ static void Dispose()
 {
     DisposeSwapchain();
 
+    vkDestroyBuffer(device.Get(), vertexBuffer, nullptr);
+    vkFreeMemory(device.Get(), vertexBufferMemory, nullptr);
+
     for (uint64_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         vkDestroySemaphore(device.Get(), renderFinishedSemaphores[i], nullptr);
@@ -841,6 +953,25 @@ static void Dispose()
     glfwTerminate();
 
     glslang::FinalizeProcess();
+}
+
+static bool FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, uint32_t* pMemoryType)
+{
+    if (!pMemoryType)
+        return false;
+    
+    VkPhysicalDeviceMemoryProperties memoryProperties;
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+
+    for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+        if (typeFilter & (1 << i) 
+            && (memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+        {
+            *pMemoryType = i;
+            return true;
+        }
+    
+    return false;
 }
 
 int main()

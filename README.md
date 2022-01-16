@@ -3,8 +3,6 @@ A hello triangle using Vulkan in C++.
 
 I only intend for this project to work on linux, but you can have a go on getting it to run on Windows too. I might make a Windows version eventually.
 
-Note: This project is still a work in progress.
-
 The result of this program should look something like this. Feel free to copy and paste code:
 
 ![Vulkan hello triangle](https://github.com/BendedWills/VulkanHelloTriangle/blob/main/triangle.png?raw=true)
