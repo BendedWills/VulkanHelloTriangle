@@ -41,20 +41,7 @@ namespace Vulkan
             SwapchainDetails details,
             VkSwapchainCreateInfoKHR* createInfo
         );
-
-        /**
-         * @brief Resizes the swapchain images to match the specified width and
-         *  height.
-         * 
-         * @warning THIS FUNCTION IS CURRENTLY UNIMPLEMENTED
-         * 
-         * @param width The new width of the swapchain images.
-         * @param height The new height of the swapchain images.
-         * 
-         * @returns True if the resize was successful. Otherwise, false.
-         */
-        bool ResizeBuffers(uint64_t width, uint64_t height);
-
+        
         VkSurfaceFormatKHR ChooseSurfaceFormat(SwapchainDetails details);
         VkPresentModeKHR ChoosePresentMode(std::vector<VkPresentModeKHR>& presentModes);
         VkExtent2D ChooseExtent(VkSurfaceCapabilitiesKHR& capabilities,
